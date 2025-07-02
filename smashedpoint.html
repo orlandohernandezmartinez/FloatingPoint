@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Floating Point</title>
+  <style>
+    html, body { margin:0; padding:0; overflow:hidden; background:#fafafa; }
+    canvas { display:block; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const canvas      = document.getElementById('canvas');
+    const ctx         = canvas.getContext('2d');
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const r            = 75;     // radio (diámetro = 150px)
+    const cycle        = 3500;   // ida+vuelta en ms
+    const squashAmp    = 0.2;    // intensidad máxima del squash
+    const bounceOffset =   0;    // distancia (px) desde el borde donde rebota
+    const squashZone   =  10;    // px de recorrido tras el rebote para completar el squash
+
+    let start = null;
+    function loop(ts) {
+      if (!start) start = ts;
+      const t = (ts - start) % cycle;
+      const p = t / cycle;               // 0→1
+
+      // 1) Defino los extremos de movimiento según bounceOffset
+      const yMin = r + bounceOffset;
+      const yMax = canvas.height - r - bounceOffset;
+
+      // movimiento cosenoidal entre yMin y yMax
+      const y = yMin + (yMax - yMin) * (1 - Math.cos(2 * Math.PI * p)) / 2;
+
+      // 2) squash solo en [yMin → yMin+squashZone] y [yMax-squashZone → yMax]
+      let frac = 0;
+
+      // parte superior
+      if (y <= yMin + squashZone) {
+        // y = yMin   → frac = 1
+        // y = yMin+squashZone → frac = 0
+        frac = (yMin + squashZone - y) / squashZone;
+      }
+      // parte inferior
+      else if (y >= yMax - squashZone) {
+        // y = yMax      → frac = 1
+        // y = yMax-squashZone → frac = 0
+        frac = (y - (yMax - squashZone)) / squashZone;
+      }
+
+      // clamp [0,1]
+      frac = Math.max(0, Math.min(frac, 1));
+
+      // 3) calculo escalas
+      const scaleX = 1 + squashAmp * frac;
+      const scaleY = 1 - squashAmp * frac;
+
+      // 4) dibujo
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+        ctx.translate(canvas.width / 2, y);
+        ctx.scale(scaleX, scaleY);
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+      ctx.restore();
+
+      requestAnimationFrame(loop);
+    }
+
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
